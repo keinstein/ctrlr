@@ -57,7 +57,7 @@ CtrlrLuaManager::CtrlrLuaManager(CtrlrPanel &_owner)
 		luaState(nullptr)
 {
 	methodManager			= new CtrlrLuaMethodManager(*this);
-	
+
 	if ((bool)owner.getCtrlrManagerOwner().getProperty(Ids::ctrlrLuaDisabled))
 	{
 		_INF("CtrlrLuaManager::ctor, lua is disabled");
@@ -116,15 +116,17 @@ void CtrlrLuaManager::createLuaState()
 
 	// don't try to load standard libs again, here this will crash!!!
 
+#if 0
+    //TODO: ts: reactivate
 
-
-    lua_pushcfunction(luaState, luaopen_bit);
+    lua_pushcfunction(luaState, luaopen_bit32);
     lua_pushliteral(luaState, "bit");
     lua_call(luaState, 1, 0);
-	
-    lua_pushcfunction(luaState, luaopen_usb);
+
+    lua_pushcfunction(luaState, luaopen_libusb);
     lua_pushliteral(luaState, "usb");
     lua_call(luaState, 1, 0);
+#endif
 
 	using namespace luabind;
     open(luaState);
@@ -137,7 +139,8 @@ void CtrlrLuaManager::createLuaState()
 void CtrlrLuaManager::createLuaStateAudio()
 {
 	luaStateAudio 		= luaL_newstate();
-
+	luaL_openlibs(luaState);
+	/* already opened in openlibs
     lua_pushcfunction(luaStateAudio, luaopen_base);
     lua_pushliteral(luaStateAudio, "base");
     lua_call(luaStateAudio, 1, 0);
@@ -161,10 +164,15 @@ void CtrlrLuaManager::createLuaStateAudio()
     lua_pushcfunction(luaStateAudio, luaopen_package);
     lua_pushliteral(luaStateAudio, "package");
     lua_call(luaStateAudio, 1, 0);
+	*/
+
+#if 0
+    //TODO: ts: reactivate
 
 	lua_pushcfunction(luaState, luaopen_bit);
 	lua_pushliteral(luaState, "bit");
 	lua_call(luaState, 1, 0);
+#endif
 
     using namespace luabind;
     open(luaStateAudio);
