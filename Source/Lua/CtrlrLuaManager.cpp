@@ -45,6 +45,9 @@
 #include "Deprecated/CtrlrLuaComponentAnimator.h"
 
 #include "luabind/class_info.hpp"
+extern "C" {
+#include "lua-bitop.h"
+}
 
 CtrlrLuaManager::CtrlrLuaManager(CtrlrPanel &_owner)
 	:	owner(_owner),
@@ -116,20 +119,20 @@ void CtrlrLuaManager::createLuaState()
 
 	// don't try to load standard libs again, here this will crash!!!
 
+
+	lua_pushcfunction(luaState, luaopen_bit32);
+	lua_pushliteral(luaState, "bit");
+	lua_call(luaState, 1, 0);
+
 #if 0
     //TODO: ts: reactivate
-
-    lua_pushcfunction(luaState, luaopen_bit32);
-    lua_pushliteral(luaState, "bit");
-    lua_call(luaState, 1, 0);
-
     lua_pushcfunction(luaState, luaopen_libusb);
     lua_pushliteral(luaState, "usb");
     lua_call(luaState, 1, 0);
 #endif
 
 	using namespace luabind;
-    open(luaState);
+	open(luaState);
 
 	luabind::bind_class_info(luaState);
 
@@ -166,16 +169,13 @@ void CtrlrLuaManager::createLuaStateAudio()
     lua_call(luaStateAudio, 1, 0);
 	*/
 
-#if 0
-    //TODO: ts: reactivate
 
 	lua_pushcfunction(luaState, luaopen_bit);
 	lua_pushliteral(luaState, "bit");
 	lua_call(luaState, 1, 0);
-#endif
 
-    using namespace luabind;
-    open(luaStateAudio);
+	using namespace luabind;
+	open(luaStateAudio);
 	luabind::bind_class_info(luaStateAudio);
 
 	set_pcall_callback (add_file_and_line);
