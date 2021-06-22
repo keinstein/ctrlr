@@ -1,0 +1,170 @@
+From: Enrico Tassi <gareuselesinge@debian.org>
+Date: Sun, 30 Jun 2013 22:55:45 +0200
+Subject: debian-make
+
+===================================================================
+---
+ Makefile     | 27 +++++++++++++++------------
+ src/Makefile | 35 ++++++++++++++++++++++-------------
+ 2 files changed, 37 insertions(+), 25 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index b2a62cf..0351522 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,8 @@
+ # Makefile for installing Lua
+ # See doc/readme.html for installation and customization instructions.
+ 
++export LIBTOOL=libtool --quiet
++
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+@@ -10,19 +12,20 @@ PLAT= none
+ # so take care if INSTALL_TOP is not an absolute path. See the local target.
+ # You may want to make INSTALL_LMOD and INSTALL_CMOD consistent with
+ # LUA_ROOT, LUA_LDIR, and LUA_CDIR in luaconf.h.
+-INSTALL_TOP= /usr/local
++INSTALL_TOP= $(DESTDIR)/usr
+ INSTALL_BIN= $(INSTALL_TOP)/bin
+-INSTALL_INC= $(INSTALL_TOP)/include
+-INSTALL_LIB= $(INSTALL_TOP)/lib
+-INSTALL_MAN= $(INSTALL_TOP)/man/man1
+-INSTALL_LMOD= $(INSTALL_TOP)/share/lua/$V
+-INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/$V
++INSTALL_INC= $(INSTALL_TOP)/include/lua$(V)
++INSTALL_LIB= $(INSTALL_TOP)/lib/$(DEB_HOST_MULTIARCH)
++INSTALL_MAN= $(INSTALL_TOP)/share/man/man1
++INSTALL_LMOD= $(INSTALL_TOP)/share/lua/$(V)
++INSTALL_CMOD= $(INSTALL_TOP)/lib/$(DEB_HOST_MULTIARCH)/lua/$(V)
+ 
+ # How to install. If your install program does not support "-p", then
+ # you may have to run ranlib on the installed liblua.a.
+-INSTALL= install -p
++INSTALL= libtool --quiet --mode=install install -p
+ INSTALL_EXEC= $(INSTALL) -m 0755
+ INSTALL_DATA= $(INSTALL) -m 0644
++INSTALL_LIBTOOL= $(LIBTOOL) --mode=install install -m 0644
+ #
+ # If you don't have "install" you can use "cp" instead.
+ # INSTALL= cp -p
+@@ -39,9 +42,9 @@ RM= rm -f
+ PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
+ 
+ # What to install.
+-TO_BIN= lua luac
++TO_BIN= lua$(V) luac$(V)
+ TO_INC= lua.h luaconf.h lualib.h lauxlib.h lua.hpp
+-TO_LIB= liblua.a
++TO_LIB= liblua$(V).la liblua$(V)-c++.la
+ TO_MAN= lua.1 luac.1
+ 
+ # Lua version and release.
+@@ -52,16 +55,16 @@ R= $V.4
+ all:	$(PLAT)
+ 
+ $(PLATS) clean:
+-	cd src && $(MAKE) $@
++	cd src && $(MAKE) $@ INSTALL_LIB=$(INSTALL_LIB)
+ 
+ test:	dummy
+-	src/lua -v
++	$(LIBTOOL) --mode=execute -dlopen src/liblua$(V).la src/lua$(V) -v
+ 
+ install: dummy
+ 	cd src && $(MKDIR) $(INSTALL_BIN) $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_MAN) $(INSTALL_LMOD) $(INSTALL_CMOD)
+ 	cd src && $(INSTALL_EXEC) $(TO_BIN) $(INSTALL_BIN)
+ 	cd src && $(INSTALL_DATA) $(TO_INC) $(INSTALL_INC)
+-	cd src && $(INSTALL_DATA) $(TO_LIB) $(INSTALL_LIB)
++	cd src && $(INSTALL_LIBTOOL) $(TO_LIB) $(INSTALL_LIB)
+ 	cd doc && $(INSTALL_DATA) $(TO_MAN) $(INSTALL_MAN)
+ 
+ uninstall:
+diff --git a/src/Makefile b/src/Makefile
+index 7b4b2b7..8a18266 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -4,10 +4,18 @@
+ # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
+ 
+ # Your platform. See PLATS for possible values.
+-PLAT= none
++PLAT= 
++
++CC= $(CCACHE)gcc -std=gnu99
++CXX= $(CCACHE)g++
++CFLAGS= -Wall -Wextra -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
++CXXFLAGS= -Wall -Wextra -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCXXFLAGS)
++
++MYCFLAGS=$(shell dpkg-buildflags --get CFLAGS) $(shell dpkg-buildflags --get CPPFLAGS)
++MYCXXFLAGS=$(shell dpkg-buildflags --get CXXFLAGS) $(shell dpkg-buildflags --get CPPFLAGS)
++MYLDFLAGS=$(shell dpkg-buildflags --get LDFLAGS)
++MYLIBS=-ldl
+ 
+-CC= gcc
+-CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+ LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
+ LIBS= -lm $(SYSLIBS) $(MYLIBS)
+ 
+@@ -19,16 +27,13 @@ SYSCFLAGS=
+ SYSLDFLAGS=
+ SYSLIBS=
+ 
+-MYCFLAGS=
+-MYLDFLAGS=
+-MYLIBS=
+ MYOBJS=
+ 
+ # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======
+ 
+ PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
+ 
+-LUA_A=	liblua.a
++LUA_A=	liblua5.2.la liblua5.2-c++.la
+ CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o \
+ 	lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o \
+ 	ltm.o lundump.o lvm.o lzio.o
+@@ -36,10 +41,10 @@ LIB_O=	lauxlib.o lbaselib.o lbitlib.o lcorolib.o ldblib.o liolib.o \
+ 	lmathlib.o loslib.o lstrlib.o ltablib.o loadlib.o linit.o
+ BASE_O= $(CORE_O) $(LIB_O) $(MYOBJS)
+ 
+-LUA_T=	lua
++LUA_T=	lua5.2
+ LUA_O=	lua.o
+ 
+-LUAC_T=	luac
++LUAC_T=	luac5.2
+ LUAC_O=	luac.o
+ 
+ ALL_O= $(BASE_O) $(LUA_O) $(LUAC_O)
+@@ -56,14 +61,14 @@ o:	$(ALL_O)
+ a:	$(ALL_A)
+ 
+ $(LUA_A): $(BASE_O)
+-	$(AR) $@ $(BASE_O)
+-	$(RANLIB) $@
++	$(LIBTOOL) --mode=link --tag=CC  $(CC)  $(LDFLAGS) -lm -ldl $(BASE_O:.o=.lo)     -rpath /usr/lib/$(DEB_HOST_MULTIARCH) -version-info 0:0:0 -Wl,--version-script,../debian/version-script -o liblua5.2.la
++	$(LIBTOOL) --mode=link --tag=CXX $(CXX) $(LDFLAGS) -lm -ldl $(BASE_O:.o=-c++.lo) -rpath /usr/lib/$(DEB_HOST_MULTIARCH) -version-info 0:0:0 -Wl,--version-script,../debian/version-script -o liblua5.2-c++.la
+ 
+ $(LUA_T): $(LUA_O) $(LUA_A)
+-	$(CC) -o $@ $(LDFLAGS) $(LUA_O) $(LUA_A) $(LIBS)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $(LIBS) -Wl,--version-script,../debian/version-script -static liblua5.2.la -Wl,-E lua.lo -o $@
+ 
+ $(LUAC_T): $(LUAC_O) $(LUA_A)
+-	$(CC) -o $@ $(LDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -Wl,--version-script,../debian/version-script -static liblua5.2.la luac.lo -o $@
+ 
+ clean:
+ 	$(RM) $(ALL_T) $(ALL_O)
+@@ -125,6 +130,10 @@ solaris:
+ 
+ # DO NOT DELETE
+ 
++%.o:%.c
++	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) -c $< -o $@
++	$(LIBTOOL) --mode=compile --tag=CXX $(CXX) $(CFLAGS) -c $< -o $*-c++.o
++
+ lapi.o: lapi.c lua.h luaconf.h lapi.h llimits.h lstate.h lobject.h ltm.h \
+  lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h lstring.h ltable.h lundump.h \
+  lvm.h

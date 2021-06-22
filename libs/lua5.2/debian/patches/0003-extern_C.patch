@@ -1,0 +1,24 @@
+From: Enrico Tassi <gareuselesinge@debian.org>
+Date: Fri, 14 Aug 2015 10:16:57 +0200
+Subject: extern_C
+
+---
+ src/luaconf.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/luaconf.h b/src/luaconf.h
+index e0b1a13..c323b7f 100644
+--- a/src/luaconf.h
++++ b/src/luaconf.h
+@@ -157,7 +157,11 @@
+ 
+ #else				/* }{ */
+ 
++#ifdef __cplusplus
++#define LUA_API                extern "C"
++#else
+ #define LUA_API		extern
++#endif
+ 
+ #endif				/* } */
+ 
